@@ -2,6 +2,7 @@ package main
 
 import "core:container/queue"
 import "core:fmt"
+import "core:math"
 import rl "vendor:raylib"
 
 Vec2 :: [2]f32
@@ -29,6 +30,9 @@ Game_State :: struct {
 	event:         struct {
 		queue:       queue.Queue(Event),
 		subscribers: map[Event_Type][dynamic]Event_Callback_Proc,
+	},
+	assets:        struct {
+		textures: map[Texture_Key]rl.Texture,
 	},
 }
 
@@ -71,6 +75,8 @@ main :: proc() {
 
 	rl.InitWindow(gs.window_width, gs.window_height, "RPG")
 	rl.SetTargetFPS(60)
+
+	assets_init()
 
 	gs.player_handle = entity_create()
 
@@ -152,6 +158,12 @@ render :: proc() {
 			}
 
 			event_enqueue(event)
+		}
+
+		if texture, texture_ok := gs.assets.textures[.Test_Image]; texture_ok {
+			rotation := f32(gs.time.session) * 200
+			scale := math.sin(f32(gs.time.session))
+			rl.DrawTextureEx(texture, {256, 256}, rotation, scale, rl.WHITE)
 		}
 	}
 
