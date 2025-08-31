@@ -7,6 +7,7 @@ import rl "vendor:raylib"
 
 Vec2 :: [2]f32
 Vec3 :: [3]f32
+Rect :: rl.Rectangle
 
 Game_State :: struct {
 	window_width:  i32,
@@ -37,6 +38,9 @@ Game_State :: struct {
 	animations:    struct {
 		sprite_animation_definitions: [Animation_Type]Sprite_Animation_Definition,
 		sprite_animations:            [dynamic]Sprite_Animation,
+	},
+	physics:       struct {
+		static_geometry: [dynamic]Rect,
 	},
 	camera:        rl.Camera2D,
 }
@@ -94,7 +98,16 @@ main :: proc() {
 
 	gs.player_handle = entity_create()
 	player := entity_get(gs.player_handle)
+	player.movement_speed = 300
+	player.collider_radius = 16
 	player.sprite_animation.definition = gs.animations.sprite_animation_definitions[.Soldier_Walk]
+
+	center := Vec2{f32(gs.window_width), f32(gs.window_height)} / 2
+	player.position = center
+
+	append(&gs.physics.static_geometry, Rect{center.x + 16, center.y + 16, 100, 30})
+	append(&gs.physics.static_geometry, Rect{center.x - 32, center.y / 2, 20, 130})
+	append(&gs.physics.static_geometry, Rect{center.x - 128, center.y * 0.75, 50, 50})
 
 	gs.camera.zoom = 4
 
@@ -133,7 +146,17 @@ update :: proc() {
 	if gs.input.left do move_dir.x -= 1
 	if gs.input.right do move_dir.x += 1
 
-	player.position += rl.Vector2Normalize(move_dir) * 300 * gs.time.delta
+	player_movement := rl.Vector2Normalize(move_dir) * player.movement_speed * gs.time.delta
+	next_player_position := player.position + player_movement
+
+	for rect in gs.physics.static_geometry {
+		if rl.CheckCollisionCircleRec(next_player_position, player.collider_radius, rect) {
+			next_player_position = player.position
+			break
+		}
+	}
+
+	player.position = next_player_position
 }
 
 render :: proc() {
@@ -185,6 +208,12 @@ render :: proc() {
 			rotation := f32(gs.time.session) * 200
 			scale := math.sin(f32(gs.time.session))
 			rl.DrawTextureEx(texture, {256, 256}, rotation, scale, rl.WHITE)
+		}
+
+		rl.DrawCircleLinesV(player.position, player.collider_radius, rl.GREEN)
+
+		for rect in gs.physics.static_geometry {
+			rl.DrawRectangleLinesEx(rect, 1, rl.GRAY)
 		}
 
 		rl.BeginMode2D(gs.camera)

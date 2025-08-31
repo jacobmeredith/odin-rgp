@@ -5,6 +5,8 @@ import "core:log"
 Entity :: struct {
 	position:         Vec2,
 	sprite_animation: Sprite_Animation,
+	movement_speed:   f32,
+	collider_radius:  f32,
 }
 
 Entity_Handle :: struct {
