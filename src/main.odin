@@ -83,8 +83,6 @@ main :: proc() {
 	assets_init()
 	animations_init()
 
-	gs.player_handle = entity_create()
-
 	soldier_idle_instance: Sprite_Animation
 	soldier_idle_instance.definition = gs.animations.sprite_animation_definitions[.Soldier_Idle]
 	append(&gs.animations.sprite_animations, soldier_idle_instance)
@@ -93,6 +91,10 @@ main :: proc() {
 	soldier_walk_instance.definition = gs.animations.sprite_animation_definitions[.Soldier_Walk]
 	soldier_walk_instance.flags += {.Once}
 	append(&gs.animations.sprite_animations, soldier_walk_instance)
+
+	gs.player_handle = entity_create()
+	player := entity_get(gs.player_handle)
+	player.sprite_animation.definition = gs.animations.sprite_animation_definitions[.Soldier_Walk]
 
 	gs.camera.zoom = 4
 
@@ -120,7 +122,7 @@ input :: proc() {
 update :: proc() {
 	time_update()
 	event_update()
-	sprite_animations_update()
+	entity_update()
 
 	player := entity_get(gs.player_handle)
 
@@ -163,8 +165,6 @@ render :: proc() {
 			rl.WHITE,
 		)
 
-		rl.DrawCircleV(player.position, 10, rl.GREEN)
-
 		duration: f64 = 5
 		t := f32(gs.time.session / duration)
 		a := f32(0)
@@ -189,26 +189,23 @@ render :: proc() {
 
 		rl.BeginMode2D(gs.camera)
 		{
-			{
-				sprite_animation := &gs.animations.sprite_animations[0]
-				x_offset := f32(sprite_animation.current_frame * 100)
-				rl.DrawTextureRec(
-					sprite_animation.definition.texture,
-					{x_offset, 0, 100, 100},
-					player.position - {50, 50},
-					rl.WHITE,
-				)
-			}
+			for index in gs.entity.active_entities {
+				entity := &gs.entity.entities[index]
+				sprite_animation := &entity.sprite_animation
 
-			if len(gs.animations.sprite_animations) > 1 {
-				sprite_animation := &gs.animations.sprite_animations[1]
-				x_offset := f32(sprite_animation.current_frame * 100)
-				rl.DrawTextureRec(
-					sprite_animation.definition.texture,
-					{x_offset, 0, 100, 100},
-					{50, 50},
-					rl.WHITE,
-				)
+				if len(sprite_animation.definition.frames) > 0 {
+					frame_width := sprite_animation.definition.frame_width
+					frame_height := sprite_animation.definition.frame_height
+					x_offset :=
+						f32(sprite_animation.current_frame) *
+						sprite_animation.definition.frame_width
+					rl.DrawTextureRec(
+						sprite_animation.definition.texture,
+						{x_offset, 0, frame_width, frame_height},
+						entity.position - {50, 50},
+						rl.WHITE,
+					)
+				}
 			}
 		}
 		rl.EndMode2D()

@@ -3,7 +3,8 @@ package main
 import "core:log"
 
 Entity :: struct {
-	position: Vec2,
+	position:         Vec2,
+	sprite_animation: Sprite_Animation,
 }
 
 Entity_Handle :: struct {
@@ -76,6 +77,35 @@ entity_destroy :: proc(handle: Entity_Handle) {
 					unordered_remove(&gs.entity.active_entities, i)
 					break
 				}
+			}
+		}
+	}
+}
+
+entity_update :: proc() {
+	for index in gs.entity.active_entities {
+		entity := &gs.entity.entities[index]
+
+		sprite_animation := &entity.sprite_animation
+
+		if len(sprite_animation.definition.frames) > 0 {
+			sprite_animation.frame_timer -= gs.time.delta
+
+			if sprite_animation.frame_timer <= 0 {
+				next_frame := sprite_animation.current_frame + 1
+
+				if .Once not_in sprite_animation.flags {
+					next_frame = next_frame % len(sprite_animation.definition.frames)
+				} else {
+					next_frame = min(next_frame, len(sprite_animation.definition.frames) - 1)
+					if sprite_animation.current_frame == next_frame {
+						sprite_animation.flags += {.Done}
+					}
+				}
+
+				sprite_animation.frame_timer =
+					sprite_animation.definition.frame_lengths[next_frame]
+				sprite_animation.current_frame = next_frame
 			}
 		}
 	}
