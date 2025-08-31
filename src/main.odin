@@ -34,6 +34,11 @@ Game_State :: struct {
 	assets:        struct {
 		textures: map[Texture_Key]rl.Texture,
 	},
+	animations:    struct {
+		sprite_animation_definitions: [Animation_Type]Sprite_Animation_Definition,
+		sprite_animations:            [dynamic]Sprite_Animation,
+	},
+	camera:        rl.Camera2D,
 }
 
 gs: ^Game_State
@@ -68,24 +73,33 @@ main :: proc() {
 		event_enqueue(event)
 	}
 
-	entity_init()
-
 	gs.window_width = 1280
 	gs.window_height = 720
 
 	rl.InitWindow(gs.window_width, gs.window_height, "RPG")
 	rl.SetTargetFPS(60)
 
+	entity_init()
 	assets_init()
+	animations_init()
 
 	gs.player_handle = entity_create()
 
-	for !rl.WindowShouldClose() {
+	soldier_idle_instance: Sprite_Animation
+	soldier_idle_instance.definition = gs.animations.sprite_animation_definitions[.Soldier_Idle]
+	append(&gs.animations.sprite_animations, soldier_idle_instance)
 
+	soldier_walk_instance: Sprite_Animation
+	soldier_walk_instance.definition = gs.animations.sprite_animation_definitions[.Soldier_Walk]
+	soldier_walk_instance.flags += {.Once}
+	append(&gs.animations.sprite_animations, soldier_walk_instance)
+
+	gs.camera.zoom = 4
+
+	for !rl.WindowShouldClose() {
 		input()
 		update()
 		render()
-
 	}
 
 	rl.CloseWindow()
@@ -105,8 +119,8 @@ input :: proc() {
 
 update :: proc() {
 	time_update()
-
 	event_update()
+	sprite_animations_update()
 
 	player := entity_get(gs.player_handle)
 
@@ -141,6 +155,13 @@ render :: proc() {
 			20,
 			rl.WHITE,
 		)
+		rl.DrawText(
+			fmt.ctprintf("Animations: %v", len(gs.animations.sprite_animations)),
+			8,
+			44,
+			20,
+			rl.WHITE,
+		)
 
 		rl.DrawCircleV(player.position, 10, rl.GREEN)
 
@@ -165,6 +186,32 @@ render :: proc() {
 			scale := math.sin(f32(gs.time.session))
 			rl.DrawTextureEx(texture, {256, 256}, rotation, scale, rl.WHITE)
 		}
+
+		rl.BeginMode2D(gs.camera)
+		{
+			{
+				sprite_animation := &gs.animations.sprite_animations[0]
+				x_offset := f32(sprite_animation.current_frame * 100)
+				rl.DrawTextureRec(
+					sprite_animation.definition.texture,
+					{x_offset, 0, 100, 100},
+					player.position - {50, 50},
+					rl.WHITE,
+				)
+			}
+
+			if len(gs.animations.sprite_animations) > 1 {
+				sprite_animation := &gs.animations.sprite_animations[1]
+				x_offset := f32(sprite_animation.current_frame * 100)
+				rl.DrawTextureRec(
+					sprite_animation.definition.texture,
+					{x_offset, 0, 100, 100},
+					{50, 50},
+					rl.WHITE,
+				)
+			}
+		}
+		rl.EndMode2D()
 	}
 
 	rl.EndDrawing()
